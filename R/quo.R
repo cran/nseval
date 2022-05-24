@@ -1,10 +1,11 @@
 #' Quotation objects.
 #'
-#' `quo` captures its argument literally, that is, without evaluating,
-#' and constructs a quotation. A quotation has two parts: an
-#' expression `expr(q)` with an environment `env(q)`. (Like in
-#' writing, an 'expression' may simply be a set of words, but a
-#' 'quotation' comes bundled with a citation, to reference a context
+#' `quo(expr, env)` captures `expr` without evaluating, and returns a
+#' qutation object. A quotation has two parts: an
+#' expression `expr(q)` with an environment `env(q)`.
+#'
+#' (Like in writing, an 'expression' may simply be a set of words, but
+#' a 'quotation' comes bundled with a citation, to reference a context
 #' in which it was said.)
 #'
 #' A quo is parallel to a 'promise' which is the data structure R uses
@@ -14,7 +15,8 @@
 #' As a data object, a quo does not automatically evaluate like a
 #' promise, but can be evaluated explicitly with the methods [value]
 #' or [force_].  A quo is immutable, so it does not mutate into a
-#' "forced" state if you choose to evaluate it.
+#' "forced" state if you choose to evaluate it; instead `force_(q)`
+#' returns a new object in the forced state.
 #'
 #' A function can capture its arguments as quotations using [`arg`].
 #'
@@ -24,15 +26,15 @@
 #' @param expr An expression. For `quo` this is taken literally and
 #'   not evaluated. For `quo_` this is evaluated normally.
 #' @param env An [environment].
-#' @param force Immediately evaluate the expression and create a
-#'   [forced] quotation, i.e. one that stores an expression and value,
-#'   but no environment.
+#' @param force Whether to evaluate the expression and create a
+#'   [forced] quotation.
 #' @return `quo_` and `quo` return an object of class "quotation".
 #' @aliases quotation
 quo <- function(expr, env = arg_env_(quote(expr), environment()), force = FALSE) {
   quo_(arg_expr_(quote(expr), environment()), env = env, force = force)
 }
 
+#' @description
 #' `quo_(expr, env)` is the normally evaluating version. It
 #' constructs a quotation given an expression and environment.
 #' @rdname quo
@@ -50,7 +52,6 @@ quo_ <- function(expr, env, force = FALSE) {
 #' @export
 env <- function(q) UseMethod("env")
 
-#' @rdname quo
 #' @export
 env.quotation <- function(q) {
   environment(q)
@@ -63,8 +64,7 @@ env.quotation <- function(q) {
   UseMethod("env<-")
 }
 
-#' @rdname quo
-#' @export
+#' @exportS3Method "env<-" quotation
 `env<-.quotation` <- function(q, value) {
   quo_(expr(q), value);
 }
@@ -86,12 +86,10 @@ expr.quotation <- function(q) {
   UseMethod("expr<-")
 }
 
-#' @rdname quo
-#' @export
+#' @exportS3Method "expr<-" quotation
 `expr<-.quotation` <- function(q, value) {
   quo_(value, env(q))
 }
-
 
 #' @rdname quo
 #' @export
@@ -100,6 +98,13 @@ is.quotation <- function(x) {
   inherits(x, "quotation")
 }
 
+#' @rdname quo
+#' @export
+is.quo <- function(x) {
+  inherits(x, "quotation")
+}
+
+#' @description
 #' `as.quo(x)` converts an object into a quotation. Closures,
 #' formulas, and single-element [dots] can be converted this way.
 #' @return `as.quo` returns a quotation.
@@ -109,8 +114,7 @@ as.quo <- function(x) {
   UseMethod("as.quo")
 }
 
-#' @export
-#' @rdname quo
+#' @exportS3Method as.quo "function"
 as.quo.function <- function(x) {
   if (is.primitive(x)) stop("can't convert primitive to quotation")
   f <- formals(x)
@@ -120,12 +124,10 @@ as.quo.function <- function(x) {
   quo_(body(x), environment(x))
 }
 
-#' @export
-#' @rdname quo
+#' @exportS3Method as.quo quotation
 as.quo.quotation <- identity
 
-#' @export
-#' @rdname quo
+#' @exportS3Method as.quo dots
 as.quo.dots <- function(x) {
   if (length(x) == 1)
     x[[1]]
@@ -133,22 +135,19 @@ as.quo.dots <- function(x) {
     stop("can't convert nonscalar dots to a quotation")
 }
 
-#' @export
-#' @rdname quo
+#' @exportS3Method as.quo formula
 as.quo.formula <- function(x) {
   expr <- x[[2]]
   env <- attr(x, ".Environment")
   quo_(expr, env)
 }
 
-#' @export
-#' @rdname quo
+#' @exportS3Method as.quo lazy
 as.quo.lazy <- function(x) {
   quo_(x$expr, x$env)
 }
 
-#' @export
-#' @rdname quo
+#' @exportS3Method as.quo default
 as.quo.default <- function(x) {
   if (mode(x) == "list") {
     expr <- x$expr
@@ -157,4 +156,21 @@ as.quo.default <- function(x) {
     stop(paste0("can't convert ", class(x)[1] ," to a quo"))
   }
   quo_(expr, env)
+}
+
+ifnot <- function(a, why) if (!isTRUE(a)) why else a
+`%&&%` <- function(a, b) if (!isTRUE(a)) a else b
+
+#' @exportS3Method all.equal quotation
+#' @importFrom methods is
+all.equal.quotation <- function(target, current, ...) {
+  ifnot(is(current, "quotation"), "current is not a quotation") %&&%
+    ifnot(all.equal(expr(target), expr(current), ...),
+                    "target, current have different expressions") %&&%
+    ifnot(forced(target) == forced(current), "only one is forced") %&&%
+    if (forced(target))
+         ifnot(all.equal(value(target), value(current), ...),
+               "target, current have different values")
+         else ifnot(identical(env(target), env(current)),
+                    "target, current have different environments")
 }

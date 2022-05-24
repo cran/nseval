@@ -5,11 +5,15 @@
 \alias{get_function}
 \title{Get information about currently executing calls.}
 \usage{
-get_call(env = caller(environment()),
-  ifnotfound = stop("get_call: environment not found on stack"))
+get_call(
+  env = caller(environment()),
+  ifnotfound = stop("get_call: environment not found on stack")
+)
 
-get_function(env = caller(environment()),
-  ifnotfound = stop("get_function: environment not found on stack"))
+get_function(
+  env = caller(environment()),
+  ifnotfound = stop("get_function: environment not found on stack")
+)
 }
 \arguments{
 \item{env}{An environment belonging to a currently executing
@@ -31,13 +35,16 @@ executing call, returns the function call and its arguments, as a
 \link{dots} object. To replicate a call, the \link{dots} object returned can
 be passed to \link{do}.
 
-\code{get_function} is similar to \code{\link{sys.function}}, but is keyed by
-environment rather than number.
+\code{get_function(env)} finds the function object associated with a
+currently executing call.
 }
 \details{
 \code{get_call} is meant to replace \code{\link{match.call}} and \code{\link{sys.call}};
 its advantage is that it captures the environments bound to
 arguments in addition to their written form.
+
+\code{get_function} is similar to \code{\link{sys.function}}, but is keyed by
+environment rather than number.
 }
 \examples{
 # We might think of re-writing the start of [lm] like so:

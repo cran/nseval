@@ -8,11 +8,23 @@
 \alias{print.quotation}
 \title{Formatting methods for dots and quotations.}
 \usage{
-\method{format}{dots}(x, compact = FALSE, show.environments = !compact,
-  show.expressions = !compact, width = 36, ...)
+\method{format}{dots}(
+  x,
+  compact = FALSE,
+  show.environments = !compact,
+  show.expressions = !compact,
+  width = 36,
+  ...
+)
 
-\method{format}{quotation}(x, compact = FALSE, show.environments = !compact,
-  show.expressions = !compact, width = 36, ...)
+\method{format}{quotation}(
+  x,
+  compact = FALSE,
+  show.environments = !compact,
+  show.expressions = !compact,
+  width = 36,
+  ...
+)
 
 \method{format}{oneline}(x, max.width = 50, width = max.width, ...)
 
@@ -40,8 +52,7 @@ quotations.}
 }
 \description{
 \code{format.dots} constructs a string representation of a dots
-object. An un\link{forced} quotation is shown as \code{envir ? expr} and a
-forced quotation is shown as \code{expr := value}.
+object.
 
 \code{format.quotation} constructs a string representation of a
 quotation object.

@@ -232,8 +232,8 @@ test_that("expression mutator", local({
     e2 <<- environment()
     x <- f1(("5"), ...) #note parens to stop optimization
   }
-  test <- f2()
 
+  test <- f2()
   e1$temp1 %is% "6"
   e2$temp2 %is% "66"
 
@@ -402,6 +402,61 @@ test_that("arg_list gets (...)",
   }
   g("a", foo) %is% quo(foo)
   expect_error(g("...", foo, bar, baz), "\\.\\.\\.")
+})
+
+catch <- function(expr) tryCatch({expr; stop("no error")}, error=function(x) x)
+
+test_that("do(), missingness, primitive fns with missing args", {
+
+  # Established behavior:
+  error1 <- catch(list(,))
+  # -> Error in list(, ) : argument 1 is empty
+  error2 <- catch(
+    do.call("list", args=list(missing_value(), missing_value())))
+  expect_equal(error1, error2)
+
+  # this is one reason do_ wraps the call in a promise
+  error3 <- catch(do(list, quo(), quo()))
+  expect_equal(error1, error3)
+
+  error4 <- catch(do(list,
+                     quo_(missing_value(), NULL),
+                     quo_(missing_value(), NULL)))
+  expect_equal(error1, error4)
+  # -> Error in do__(d) (from caller.R #156) : object '' not found
+
+  # Non-primitive function gets a different misbehavior:
+  nonprimitive <- function(...) list(...)
+  error1 <- catch(nonprimitive(,))
+  error2 <- catch(do.call("nonprimitive", args=list(missing_value(), missing_value())))
+  expect_equal(error1, error2)
+  error3 <- catch(do(nonprimitive, quo(), quo()))
+  expect_equal(error1, error3)
+})
+
+test_that("syscalls under 'do()' should be printable", {
+  throw <- function(q) {
+    stop("expected_error")
+  }
+  trigger <- function() {
+    do(list, throw()) # expected error occuring when "do" forces its arguments
+  }
+  trigger2 <- function() {
+    # error occurring when called function forces args
+    f <- function(x) {list(force(x))}
+    do_(quo(f), quo(throw()))
+  }
+  with_print_calls <- function(object) {
+    withCallingHandlers({
+      object
+    }, error = function(cnd) {
+      # printing syscalls should not throw a new error...
+      s <- sys.calls()
+      capture.output(print(s))
+    })
+  }
+  expect_error(with_print_calls(trigger()), "expected_error")
+  expect_error(with_print_calls(trigger2()), "expected_error")
 })
 
 test_that("dots() on empty arguments", {

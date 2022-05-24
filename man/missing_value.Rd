@@ -44,17 +44,6 @@ list of such.
 \code{missing_value()} returns R's missing object; what R uses to
 represent a missing argument. It is distinct from either \link{NULL} or
 \link{NA}.
-
-\code{missing_} compares expressions with the missing value. It is a generic
-function with methods for \link{dots}, \link{quotation}s and lists.
-
-\code{missing_} on a list compares each element of the list to the
-missing value, and returns a logical vector.
-
-\code{missing_} on \link{dots} and \link{quotation} objects checks whether the
-expressions are identical to the missing value.
-
-\code{list_missing} is similar to \code{list} but allows missing arguments.
 }
 \details{
 The missing value occurs naturally in a quoted R expression that has an empty argument:
@@ -80,7 +69,7 @@ This means that it's sometimes tricky to work with missings:
   cols <- x[[4]]
   x <- list(missing_value(), 2, 3)     # this is ok, but...
   a <- missing_value(); b <- 2; c <- 3 # this stores missing in "cols",
-  x <- list(a, b, c)                   # throws an error: "a" missingrt
+  x <- list(a, b, c)                   # throws an error: "a" missing
 }
 Generally, keep your missing values wrapped up in lists or quotations,
 instead of assigning them to variables directly.
@@ -100,7 +89,7 @@ substitute(df[row,col],
 `[.myclass` <- function(x, ...) {
    indices <- list_missing(...)
    kept.axes <- which(missing_(indices))
-   cat(paste0("Keeping axes ", kept_axes, "\\n"))
+   cat(paste0("Keeping axes ", kept_axes, "\n"))
    #...
 }
 ar <- structure(array(1:24, c(2, 3, 4)))

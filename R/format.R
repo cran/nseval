@@ -1,8 +1,7 @@
 #' Formatting methods for dots and quotations.
 #'
 #' `format.dots` constructs a string representation of a dots
-#' object. An un[forced] quotation is shown as `envir ? expr` and a
-#' forced quotation is shown as `expr := value`.
+#' object.
 #' @param x An object.
 #' @param compact Implies `show.environments=FALSE` and
 #'   `show.expressions=FALSE`.
@@ -33,17 +32,18 @@ format.dots <- function(x,
         collapse="")
     })
 
-  chars <- paste0("dots<< ",
+  chars <- paste0("c.dots( ",
                   paste0(contents, collapse=", "),
-                  " >>")
+                  " )")
 
   format.default(chars, ...)
 }
 
 
+#' @rdname format
+#' @description
 #' `format.quotation` constructs a string representation of a
 #' quotation object.
-#' @rdname format
 #' @export
 format.quotation <- function(x,
                              compact = FALSE,
@@ -51,19 +51,18 @@ format.quotation <- function(x,
                              show.expressions = !compact,
                              width = 36,
                              ...) {
-  chars = paste0("quo<< ",
-                 format.quotation.inner(
-                   x, compact, show.environments, show.expressions, width = width),
-                 " >>")
+  chars <- format.quotation.inner(
+    x, compact, show.environments, show.expressions, width = width)
   format.default(chars, ...)
 }
 
+#' @rdname format
+#' @description
 #' `format.oneline` formats a vector or list so that each item is
 #' displayed on one line. It is similar to [format.AsIs] but tries
 #' harder with language objects. The "oneline" class is used by
 #' [as.data.frame.dots].
 #' @export
-#' @rdname format
 #' @param max.width See [base::format].
 #' @param ... Further parameters passed along to [base::format].
 format.oneline <- function(x, max.width=50, width=max.width, ...) {
@@ -129,7 +128,7 @@ format.quotation.inner <- function(x,
     }
   }
   dodeparse <- function(x) {
-    if (is.language(x) || is.character(x)) {
+    if (is.language(x) || is.character(x) || is.list(x)) {
       deparse(x, width.cutoff=width, nlines = 1)
     } else {
       doformat(x)
@@ -137,18 +136,17 @@ format.quotation.inner <- function(x,
   }
   contents <- paste0(c(
     if(forced(x)) {
-      if (is.language(expr(x))) {
-        if (show.expressions) {
-          c(dodeparse(expr(x)), " := ", doformat(value(x)))
+      c(if (is.language(expr(x)) && show.expressions) {
+          c("forced_quo(", dodeparse(expr(x)), ", val=", dodeparse(value(x)))
         } else {
-          doformat(value(x))
-        }
-      } else {
-        doformat(value(x))
-      }
+          c("forced_quo_(", dodeparse(value(x)))
+        },
+        ")")
     } else {
-      c(if (show.environments) c(doformat(env(x)), " ? ") else "? ",
-        dodeparse(expr(x)))
+      c("quo(",
+        dodeparse(expr(x)),
+        if (show.environments) c(", ", doformat(env(x))),
+        ")")
     }
   ), collapse="")
 }

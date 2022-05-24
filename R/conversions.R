@@ -1,10 +1,10 @@
+#' @description
 #' `as.data.frame.dots` transforms the contents of a [dots] object
 #' into a data frame with one row per [quotation], with columns:
 #'  * `name`: a character,
 #'  * `expr`: an expression,
 #'  * `env`: an [environment] object or NULL if [forced],
 #'  * `value`: NULL or a value if forced.
-#'
 #' @note The columns have a class `"oneline"` for better printing.
 #' @return `as.data.frame.dots` returns a data frame.
 #' @param x A \code{\link{dots}} object.
@@ -50,6 +50,7 @@ as.dots.list <- function(x)
   structure(mapply(FUN=as.quo, x), class="dots")
 }
 
+#' @description
 #' `as.dots.environment` is a synonym for [`env2dots`].
 #' @export
 #' @rdname as.dots
@@ -178,7 +179,7 @@ goodname <- function(x) !(x %in% c(NA_character_, "", "..."))
 #'
 #' `function_` is a normally-evaluating version of [`function`], which
 #' creates closures. A closure object has three components: the
-#' argument list the body expression, and the enclosing environment.
+#' argument list, the body expression, and the enclosing environment.
 #'
 #' @param args The argument list of the new function. NULL is accepted
 #'   to make a function with no arguments. Arguments are specified as
@@ -214,9 +215,10 @@ function_ <- function(args, body, env = arg_env(args, environment())) {
   f
 }
 
-#' `arglist` is a helper that produces a named list of
-#' [missing_value]s given a character vector of names.
 #' @rdname function_
+#' @description
+#' `arglist()` is a helper that produces a named list of
+#' [missing_value]s given a character vector of names.
 #' @param names A character vector.
 #' @param fill The expression (default missing)
 #' @export
@@ -228,9 +230,8 @@ arglist <- function(names, fill = missing_value()) {
 #'
 #' Convert quotations and dot lists to the representations used
 #' by other packages.
-#' @export
 #' @rdname compat
-#' @seealso as.dots
+#' @export
 #' @param x a [dots] object.
 #' @param env See [lazyeval::as.lazy_dots].
 #' @return `as.lazy_dots` returns a [lazyeval::lazy_dots] object.

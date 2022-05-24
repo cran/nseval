@@ -30,8 +30,8 @@ character.}
 from which \code{sym} was passed.}
 
 \item{...}{Bare names (not forced). Arguments may be named; these
-names determine the names on the output list. If argument names
-are not given, the input is used as output names}
+names determine the names on the output list. If arguments are
+not named, the names given are used.}
 
 \item{syms}{A character vector or list of names.}
 

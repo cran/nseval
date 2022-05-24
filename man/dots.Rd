@@ -10,12 +10,12 @@
 \alias{envs}
 \alias{envs.dots}
 \alias{envs<-}
-\alias{envs<-.dots}
 \alias{[.dots}
 \alias{[<-.dots}
 \alias{c.dots}
 \alias{c.quotation}
 \alias{as.data.frame.dots}
+\alias{forced_dots}
 \alias{forced_dots_}
 \title{Dots objects: lists of quotations.}
 \usage{
@@ -37,8 +37,6 @@ envs(d)
 
 envs(d) <- value
 
-\method{envs}{dots}(d) <- value
-
 \method{[}{dots}(x, ..., drop = FALSE)
 
 \method{[}{dots}(x, ...) <- value
@@ -48,6 +46,8 @@ envs(d) <- value
 \method{c}{quotation}(...)
 
 \method{as.data.frame}{dots}(x, row.names = NULL, ...)
+
+forced_dots(...)
 
 forced_dots_(values)
 }
@@ -60,7 +60,7 @@ forced_dots_(values)
 
 \item{d}{A \link{dots} object.}
 
-\item{value}{A replacement value.}
+\item{value}{A replacement value or list of values.}
 
 \item{x}{A \code{\link{dots}} object.}
 
@@ -71,31 +71,31 @@ forced_dots_(values)
 \item{values}{A list; each element will be used as data.}
 }
 \value{
-A list with class 'dots', each element of which is a \link{quotation}.
+\code{dots(...)} constructs a list with class 'dots', each
+element of which is a \link{quotation}.
 
-\code{dots_(exprs, envs)} directly constructs a dots object
-given lists of expresions and environments.
+\code{dots_(exprs, envs)} constructs a dots object given lists
+of expressions and environments. (To construct a dots object from
+quotation objects, use \code{\link[=c]{c()}}.)
 
-\code{exprs} returns a named list of expressions.
+\code{exprs(d)} extracts a list of expressions from a dots object.
+
+The mutator \code{exprs(d) <- value} returns a new dots object
+with the new expressions.
+
+\code{envs(d)} extracts a list of environments from a dots
+object.
 
 \code{envs(d)} returns a named list of environments.
+
+\code{envs(d) <- value} returns an updated dots object with the
+environments replaced with the new value(s).
 
 \code{as.data.frame.dots} returns a data frame.
 }
 \description{
 \code{d <- dots(a = one, b = two)} captures each of its arguments,
 unevaluated, in a dots object (a named list of \link{quotation}s).
-
-\code{exprs(d)} extracts a list of expressions from a dots object.
-
-The mutator \code{exprs(d) <- value} returns a new dots object with the new
-expressions.
-
-\code{envs(d)} extracts a list of environments from a dots
-object.
-
-\code{envs(d) <- value} replaces the environments with the new
-value and returns an updated dots object.
 
 \code{as.data.frame.dots} transforms the contents of a \link{dots} object
 into a data frame with one row per \link{quotation}, with columns:
@@ -106,7 +106,10 @@ into a data frame with one row per \link{quotation}, with columns:
 \item \code{value}: NULL or a value if forced.
 }
 
-\code{forced_dots_(values)} create from dots object from any data.
+\code{forced_dots(...)} forces its arguments and constructs a \code{dots} object with
+\link{forced} quotations.
+
+\code{forced_dots_(values)} creates a dots object from a list of values
 }
 \details{
 Objects of class "dots" mirror R's special variable \code{...}.
@@ -118,10 +121,11 @@ Unlike \code{...}, a \code{dots} is:
 than triggering argument splicing).
 }
 
-\code{d <- dots(...)} can be used to capture the contents of \code{...}
-without triggering evaluation. This improves on \code{substitute(...())}
-by capturing the environment of each component along with the
-expressions.
+\code{d <- dots(...)} is used to capture the contents of \code{...} without
+triggering evaluation. This improves on
+\code{as.list(substitute(...()))} by capturing the environment of each
+argument along with their expressions. (You can also use
+\code{\link[=get_dots]{get_dots()}}.)
 }
 \note{
 The columns have a class \code{"oneline"} for better printing.

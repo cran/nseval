@@ -10,9 +10,9 @@ do(...)
 do_(...)
 }
 \arguments{
-\item{...}{All arguments are concatenated using \code{c.dots()}. The
-first element of the resulting list is taken as a function to
-call, the rest as its arguments.}
+\item{...}{A function to call and list(s) of arguments to pass. All
+should be \code{quotation} or \code{dots} objects, except the first
+argument for \code{do} which is quoted literally.}
 }
 \value{
 The return value of the call.
@@ -28,11 +28,11 @@ For \code{do_} all arguments should be \code{quotation} or \code{dots} objects, 
 convertible to such using \code{as.quo()}. They will be concatenated
 together by \link{c.dots} to form the call list (a \code{dots} object).
 For \code{do} the first argument is quoted literally, but the
-rest of the arguments are evaluated the same way as do_.
+rest of the arguments are evaluated the same way as \code{do_}.
 
-The first element of the call list represents the function, and it
-should evaluate to a function object. The rest of the call list is
-used as that function's arguments.
+The head, or first element of the call list, represents the
+function, and it should evaluate to a function object. The rest of
+the call list is used as that function's arguments.
 
 When a quotation is used as the first element, the call is evaluated
 from the environment given in that quotation. This means that calls
@@ -40,12 +40,29 @@ to \code{\link[=caller]{caller()}} (or \code{parent.frame()}) from within that f
 should return that environment.
 
 \code{do} is intended to be a replacement for base function \link{do.call}.
+For instance these two lines are similar in effect:\preformatted{do.call("complex", list(imaginary = 1:3))
+do(complex, dots(imaginary = 1:3))
+}
+
+As are all these:\preformatted{do.call("f", list(as.name("A")), envir = env)
+do_(quo(f, env), quo(A, env)):
+do_(dots_(list(as.name("f"), as.name("A")), env))
+do_(dots_(alist(f, A), env))
+}
 }
 \note{
-Special builtins, such as ( \code{\link{<-}}, or \code{\link{for}})
-may require that they are called from the same environment as
-their args.
+When the environment of the call head differs from that of
+the arguments, \code{do} may make a temporary binding of \code{...} to pass
+arguments. This will cause some primitive functions, like (
+\code{\link{<-}}, or \code{\link{for}}), to fail with an error like
+"'...' used an in incorrect context," because these primitives do
+not understand how to unpack \code{...}. To avoid the use of \code{...},
+ensure that all args have the same environment as the call head,
+or are forced.
+
+For the specific case of calling \verb{<-}, you can use \code{\link{set_}} to
+make assignments.
 }
 \seealso{
-get_call do.call match.call
+get_call do.call match.call set_
 }

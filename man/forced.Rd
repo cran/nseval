@@ -5,9 +5,6 @@
 \alias{forced.quotation}
 \alias{forced.dots}
 \alias{forced.default}
-\alias{forced_quo}
-\alias{forced_quo_}
-\alias{forced_dots}
 \alias{force_}
 \alias{force_.quotation}
 \alias{force_.dots}
@@ -25,12 +22,6 @@ forced(x)
 \method{forced}{dots}(x)
 
 \method{forced}{default}(x)
-
-forced_quo(x)
-
-forced_quo_(x)
-
-forced_dots(...)
 
 force_(x, ...)
 
@@ -51,7 +42,7 @@ values(x)
 \arguments{
 \item{x}{A \link{quotation} or \link{dots} object.}
 
-\item{...}{any number of arguments; they will be quoted literally.}
+\item{...}{Options used by methods}
 
 \item{eval}{Which evaluation function to use.}
 
@@ -60,11 +51,6 @@ values(x)
 }
 \value{
 \code{forced(x)} returns a \link{logical}.
-
-\code{forced_quo} and \code{forced_quo_} return \href{quo}{quotation}
-objects.
-
-\code{forced_dots} and \code{forced_dots_} return \link{dots} objects.
 
 \code{value(x)} returns the result of forcing the quotation.
 
@@ -80,25 +66,14 @@ quotations have an expression and a value.
 \code{forced(d)} on a \link{dots} object tests whether each element
 is forced, and returns a logical vector.
 
-\code{forced_quo(x)} forces its argument and then captures it.
-argument literally.
-
-\code{forced_quo_(x)} makes a forced quotation from any data.
-Specifically it constructs a \link{quotation} with the same object in
-both the \code{expr} and \code{value} slots, except if is a
-\href{is.language}{language} object in which case the value is wrapped
-in \code{quote()}.
-
-\code{forced_dots(...)} forces its arguments and emits a \code{dots} object.
-
 \code{force_(x)} converts an unforced quotation or dots object into a
 forced one, by evaluating it.
 
-\code{value} or \code{values} returns the value of a quotation or dots,
+\code{value(x)} or \code{values(...)} returns the value of a quotation or dots,
 forcing it if necessary.
 }
 \seealso{
-\link{is_forced}
+is_forced forced_quo
 
 \link{force}
 }

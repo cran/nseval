@@ -1,14 +1,24 @@
-NSEval
+---
+title: "The `nseval` Package: Utilities for Controlling Non-standard Evaluation"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteIndexEntry{"The `nseval` Package: Utilities for Controlling Non-standard Evaluation"}
+  %\VignetteEncoding{UTF-8}
+---
+
+The `nseval` Package: Utilities for Controlling Non-standard Evaluation
 ======
 
-[![CRAN version badge](http://www.r-pkg.org/badges/version/nseval)](https://cran.r-project.org/package=nseval)
-[![Travis build status](http://travis-ci.org/crowding/nseval.svg?branch=master)](https://travis-ci.org/crowding/nseval)
-[![Code coverage](https://codecov.io/gh/crowding/nseval/branch/master/graph/badge.svg)](https://codecov.io/gh/crowding/nseval)
+  <!-- badges: start -->
+[![R-CMD-check](https://github.com/crowding/nseval/workflows/R-CMD-check/badge.svg)](https://github.com/crowding/nseval/actions)
+ [![CRAN version badge](http://www.r-pkg.org/badges/version/nseval)](https://cran.r-project.org/package=nseval)[![Codecov test coverage](https://codecov.io/gh/crowding/nseval/branch/main/graph/badge.svg)](https://app.codecov.io/gh/crowding/nseval?branch=main)
+  <!-- badges: end -->
 
 `nseval` is the missing API for non-standard evaluation and
 metaprogramming in R.
 
-### Who NSEval is for
+### Who `nseval` is for
 
 `nseval` might be for you if:
 
@@ -23,11 +33,15 @@ metaprogramming in R.
 
 ## Installation
 
-```
-install.packages("devtools")
-library(devtools)
-install_github("crowding/nseval")
-```
+`nseval` is on CRAN, install the latest release with:
+
+    install.packages("nseval")
+
+To install the development branch:
+
+    install.packages("devtools")
+    devtools::install_github("crowding/nseval")
+
 
 ### What `nseval` does
 
@@ -43,7 +57,7 @@ variables and be manipulated without triggering evaluation.
 There is a set of consistently-named accessors and constructors for
 capturing, constructing, and manipulating these objects.
 
-## Quick intro / transitioning from base R to NSEval
+## Quick intro / transitioning from base R to `nseval`
 
 * Instead of `quote`, use:
   * `quo`. This captures the environment along with the text of its argument.
@@ -59,14 +73,13 @@ capturing, constructing, and manipulating these objects.
   * `do`, which allows different arguments to be passed from
     different environments.
 * Instead of `parent.frame`, use:
-  * `arg_env`, which gives the environment _attached to an argument_, which
-    is what you actually want most the time, or
+  * `arg_env`, which gives the environment _attached to an argument_ (recognizing that this can be different for different arguments!)
   * `caller`, which returns the calling environment, like
     `parent.frame` often does, but avoids the latter's difficulties
     with lazy evaluation and closures; `caller` would rather throw an error
     than return an incorrect result.
 
-### Why `nse` is needed
+### Why `nseval` is needed
 
 Before R, there was S, and S had some metaprogramming facilities,
 exposed by functions like `parent.frame`, `substitute`, `match.call`,
@@ -136,9 +149,9 @@ Some other packages have tread similar ground:
 ## Further reading
 
 It turns out that R's implementation of lazy evaluation via "promise"
-objects amount to a recreation of
-[fexprs](https://en.wikipedia.org/wiki/Fexpr). On the topic of how to
-work with fexprs, particularly in combination with lexical scope and
-environments, John Shutt's 2010
-[PhD thesis](https://web.wpi.edu/Pubs/ETD/Available/etd-090110-124904/unrestricted/jshutt.pdf)
+objects are effectively a recreation of
+[fexprs](https://en.wikipedia.org/wiki/Fexpr) with lexical scope On
+the topic of how to work with fexprs, particularly in combination with
+lexical scope and environments, John Shutt's 2010 [PhD
+thesis](https://web.wpi.edu/Pubs/ETD/Available/etd-090110-124904/unrestricted/jshutt.pdf)
 has been helpful.

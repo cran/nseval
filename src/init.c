@@ -12,7 +12,7 @@ extern SEXP _arg(SEXP, SEXP, SEXP);
 extern SEXP _arg_dots(SEXP, SEXP, SEXP, SEXP);
 extern SEXP _arg_env(SEXP, SEXP, SEXP);
 extern SEXP _arg_expr(SEXP, SEXP, SEXP);
-extern SEXP _do(SEXP);
+extern SEXP _construct_do_call(SEXP);
 extern SEXP _dots_envs(SEXP);
 extern SEXP _dots_exprs(SEXP);
 extern SEXP _dots_to_env(SEXP, SEXP, SEXP);
@@ -31,6 +31,7 @@ extern SEXP _locate(SEXP, SEXP, SEXP);
 extern SEXP _quotation(SEXP, SEXP, SEXP);
 extern SEXP _quotation_literal(SEXP);
 extern SEXP _quotation_to_promsxp(SEXP);
+extern SEXP _remove(SEXP, SEXP);
 extern SEXP _set_dots(SEXP, SEXP);
 extern SEXP _unwrap_quotation(SEXP, SEXP);
 
@@ -39,7 +40,7 @@ static const R_CallMethodDef CallEntries[] = {
   {"_arg_dots",             (DL_FUNC) &_arg_dots,             4},
   {"_arg_env",              (DL_FUNC) &_arg_env,              3},
   {"_arg_expr",             (DL_FUNC) &_arg_expr,             3},
-  {"_do",                   (DL_FUNC) &_do,                   1},
+  {"_construct_do_call",    (DL_FUNC) &_construct_do_call,    1},
   {"_dots_envs",            (DL_FUNC) &_dots_envs,            1},
   {"_dots_exprs",           (DL_FUNC) &_dots_exprs,           1},
   {"_dots_to_env",          (DL_FUNC) &_dots_to_env,          3},
@@ -58,6 +59,7 @@ static const R_CallMethodDef CallEntries[] = {
   {"_quotation",            (DL_FUNC) &_quotation,            3},
   {"_quotation_literal",    (DL_FUNC) &_quotation_literal,    1},
   {"_quotation_to_promsxp", (DL_FUNC) &_quotation_to_promsxp, 1},
+  {"_remove",               (DL_FUNC) &_remove, 2},
   {"_set_dots",             (DL_FUNC) &_set_dots,             2},
   {"_unwrap_quotation",     (DL_FUNC) &_unwrap_quotation,     2},
   {NULL, NULL, 0}

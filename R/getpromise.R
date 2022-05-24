@@ -1,7 +1,8 @@
 #' Find the environment which defines a name.
 #'
 #' `locate` starts at a given environment, and searches enclosing
-#' environments for a name. It returns the first which defines `sym`.
+#' environments for a name. It returns the first enclosing environment
+#' which defines `sym`.
 #' @param sym A name. For `locate` the argument is used literally. For
 #'   `locate_` it should be a [name] or list of names.
 #' @param env Which environment to begin searching from.
@@ -12,16 +13,15 @@
 #'   same way as [get].
 #' @param ... Further arguments passed to methods.
 #' @return An environment object which defines `sym`, if one is found.
+#' @note To locate where `...` is bound, you can wrap it in parens, as
+#'    `locate( (...) )`.
 #' @examples
 #' # Here is how to implement R's `<<-` operator, using `locate_`:
 #' `%<<-%` <- function(lval, rval) {
-#'  lval_ <- arg(lval)
-#'  rval_ <- arg(rval)
-#'  target.env <- locate_(expr(lval_), parent.env(env(lval_)))
-#'  #note that `<-` is a primitive which requires its lvalue and call
-#'  #head to come from teh same env
-#'  env(lval_) <- target.env
-#'  do_(quo(`<-`, target.env), lval_, rval_)
+#'   lval_ <- arg(lval)
+#'   name <- expr(lval_)
+#'   target.env <- locate_(name, parent.env(env(lval_)))
+#'   assign(as.character(name), rval, envir=target.env)
 #' }
 #'
 #' x <- "not this one"
@@ -33,6 +33,7 @@
 #'   })
 #'   print(x)
 #' })
+#' print(x)
 #' @export
 locate <- function(sym,
                    env = arg_env_(quote(sym), environment()),
@@ -42,6 +43,7 @@ locate <- function(sym,
   locate_(sym = sym_, env = env, mode = mode, ...)
 }
 
+#' @description
 #' `locate_` is the normally evaluating method; `locate(x)` is
 #' equivalent to `locate_(quo(x))` or `locate_(quote(x), environment())`.
 #' @rdname locate
@@ -63,6 +65,7 @@ locate.dispatch <- function(sym, env, mode, ...) {
 }
 
 
+#' @return
 #' If `sym` is a list (of [name]s) or a [dots] object, `locate_(sym)`
 #' returns a list.
 #' @rdname locate
@@ -74,6 +77,7 @@ locate_.list <- function(sym,
   lapply(sym, locate_, env=env, mode=mode, ...)
 }
 
+#' @description
 #' When `sym` is a [quotation] or [dots], any `env` argument is ignored.
 #' @rdname locate
 #' @export
@@ -153,8 +157,6 @@ locate_.name <- function(sym,
 #' quotation. When the argument is forced or has a nontrivial
 #' expression `unwrap` has no effect.
 #'
-#' The syntax `locate( (...) )` is available for locating `...`.
-#'
 #' There are two good use cases for `unwrap(x, recursive=TRUE)`. One
 #' is to derive plot labels (the most inoccuous use of
 #' metaprogramming). Another is to check for missingness (this is what
@@ -200,5 +202,6 @@ unwrap.quotation <- function(x, recursive=FALSE) {
 #' @rdname unwrap
 #' @return The [dots] method returns a dots object with each quotation unwrapped.
 unwrap.dots <- function(x, recursive=FALSE) {
-  structure(lapply(x, function(x) .Call("_unwrap_quotation", x, recursive)), class="dots")
+  structure(lapply(x, function(x) .Call("_unwrap_quotation", x, recursive)),
+            class="dots")
 }
