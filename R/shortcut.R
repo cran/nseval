@@ -8,12 +8,12 @@
 #' intermediate [quotation] objects.
 #'
 #' Throughout this package, some functions come in two forms, a "bare"
-#' version which quote their first argument literally, and a
+#' version which quotes its first argument literally, and a
 #' normally-evaluating version with a trailing underscore in its
 #' name. So `is_forced(x)` chiecks whether "x" is a missing variable,
-#' while `is_forced_(x, environment())` checks whether "x"
-#' contains the _name_ of another variable which is missing. The
-#' following are all equivalent:
+#' while `is_forced_(x, environment())` checks whether "x" contains
+#' the _name_ of another variable which is missing. The following are
+#' all equivalent:
 #'
 #' * `arg_env(x)`
 #' * `{y <- quo(x); arg_env_(y)}`
@@ -59,6 +59,34 @@ arg_expr_ <- function(sym,
   .Call("_arg_expr", env, as.name(sym), TRUE)
 }
 
+
+#' @rdname shortcut
+#' @export
+#' @param ifnotforced What to return if calling arg_value on a promise
+#'   that has not been forced.
+#' @useDynLib nseval _arg_value
+#' @return `arg_value` returns the value bound to a named argument.
+arg_value <- function(sym,
+                     env=arg_env_(quote(sym), environment()),
+                     ifnotforced=stop("Variable is not forced, so has no value")) {
+  sym_ <- arg_expr_(quote(sym), environment())
+  arg_value_(sym_, env, ifnotforced)
+}
+
+#' @rdname shortcut
+#' @export
+#' @useDynLib nseval _arg_value
+arg_value_ <- function(sym,
+                       env=arg_env_(quote(sym), environment()),
+                       ifnotforced=stop("Variable is not forced, so has no value")) {
+  sigil <- function() sym
+  result <- .Call("_arg_value", env, as.name(sym), TRUE, sigil)
+  if (missing(result)) return(missing_value())
+  if (identical(result, sigil)) ifnotforced
+  else result
+}
+
+
 #' @export
 #' @rdname shortcut
 #' @useDynLib nseval _dots_envs
@@ -97,14 +125,21 @@ is_forced_ <- function(syms, envs) {
 
 #' @exportS3Method is_forced_ default
 is_forced_.default <- function(syms, envs) {
-  if (is.null(names(syms)))
-    names(syms) <- as.character(syms)
-  mapply(
-    syms,
-    if (is.list(envs)) envs else list(envs),
-    FUN=function(sym, env) {
-      .Call("_is_forced", env, as.name(sym), FALSE)
-    })
+  out <- structure(logical(length(syms)),
+                   names=names(syms) %||% as.character(syms))
+  if (is.list(envs)) {
+    for (i in seq_along(syms))
+      out[[i]] <- .Call("_is_forced", envs[[i]], as.name(syms[[i]]), FALSE)
+  } else {
+    for (i in seq_along(syms))
+      out[[i]] <- .Call("_is_forced", envs, as.name(syms[[i]]), FALSE)
+  }
+  out
+}
+
+#' @exportS3Method is_forced_ name
+is_forced_.name <- function(syms, envs) {
+  .Call("_is_forced", envs, syms, FALSE)
 }
 
 #' @exportS3Method is_forced_ quotation
@@ -292,13 +327,6 @@ is_default <- function(...) {
 #' @export
 is_default_ <- function(syms, envs) {
   UseMethod("is_default_")
-}
-
-is_default__ <- function(sym, env) {
-  ( identical(arg_env_(sym, env),
-                 env)
-    && identical(arg_expr_(sym, env),
-                 formals(get_function(locate_(sym,env)))[[sym]]))
 }
 
 is_default__ <- function(sym, env) {

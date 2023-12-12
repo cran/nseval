@@ -7,14 +7,14 @@ SEXP emptypromise(void);
 SEXP _get_dots(SEXP env, SEXP inherit) {
   assert_type(env, ENVSXP);
   SEXP vl;
-  LOG("Getting dots from env %p", env);
+  LOG("Getting dots from env %p", (void *) env);
   if (asLogical(inherit)) {
     vl = findVar(R_DotsSymbol, env);
   } else {
     vl = findVarInFrame3(env, R_DotsSymbol, TRUE);
   }
   if (vl == R_UnboundValue || vl == R_MissingArg) {
-    LOG("... not found in env %p", env);
+    LOG("... not found in env %p", (void *) env);
     return R_NilValue;
   } else {
     return vl;
@@ -260,49 +260,37 @@ SEXP map_pairlist_to_list(SEXP in, SEXP (*f)(SEXP)) {
   return output;
 }
 
-SEXP promisish_to_closxp(SEXP x) {
+SEXP promisish_to_call(SEXP x) {
   SEXP out;
   int protections = 0;
   if (TYPEOF(x) == PROMSXP) {
     out = PROTECT(promsxp_to_quotation(x));
     protections++;
   } else if (x == R_MissingArg) {
-    out = PROTECT(empty_closure());
+    out = PROTECT(_quotation(R_EmptyEnv, R_MissingArg, R_UnboundValue, R_UnboundValue));
     protections++;
   } else {
     // this doesn't seem to happen, aside from missings. Not to say it
     // can't.
     warning("nonpromise (a %s, %p) found in ... list",
-            type2char(TYPEOF(x)), x);
-    if (is_language(x)) {
-      SEXP quote = PROTECT(Rf_lang2(install("quote"), x));
-      protections++;
-      /* we are now making up `quote(x)` as a plausible way of
-         having got the symbol `x`. However since we also return
-         EmptyEnv this will produce an error if the user attempts
-         to re-call. */
-      x = PROTECT(new_forced_promise(quote, x));
-      protections++;
-    } else {
-      x = PROTECT(new_forced_promise(x, x));
-      protections++;
-    }
+            type2char(TYPEOF(x)), (void *) x);
+    x = PROTECT(forced_value_promise(x));
     out = PROTECT(promsxp_to_quotation(x));
-    protections++;
+    protections+=2;
   }
   setAttrib(out, R_ClassSymbol, mkString("quotation"));
   UNPROTECT(protections);
   return out;
 }
 
-/* Convert a DOTSXP into a list of closures, perhaps use raw objects for closures... */
-SEXP _dotsxp_to_flist(SEXP d) {
+/* Convert a DOTSXP into a list of quotation objects */
+SEXP _dotsxp_to_quolist(SEXP d) {
   if (d == R_MissingArg) { // when "..." is missing as opposed to
                            // unbound (does this happen)?
     d = R_NilValue;
   }
   
-  SEXP out = PROTECT(map_pairlist_to_list(d, &promisish_to_closxp));
+  SEXP out = PROTECT(map_pairlist_to_list(d, &promisish_to_call));
   setAttrib(out, R_ClassSymbol, mkString("dots"));
   
   UNPROTECT(1);
@@ -404,7 +392,7 @@ SEXP _env_to_dots(SEXP envir, SEXP names, SEXP missing, SEXP expand) {
       if (!at_least_one) {PROTECT(head); at_least_one = TRUE;}
     }   
   }
-  SEXP out = PROTECT(_dotsxp_to_flist(head));
+  SEXP out = PROTECT(_dotsxp_to_quolist(head));
   setAttrib(out, R_ClassSymbol, ScalarString(mkChar("dots")));
   UNPROTECT(1);
   if (at_least_one) {

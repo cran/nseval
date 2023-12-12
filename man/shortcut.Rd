@@ -5,6 +5,8 @@
 \alias{arg_env_}
 \alias{arg_expr}
 \alias{arg_expr_}
+\alias{arg_value}
+\alias{arg_value_}
 \alias{dots_envs}
 \alias{dots_exprs}
 \alias{is_forced}
@@ -29,6 +31,18 @@ arg_env_(sym, env = arg_env_(quote(sym), environment()))
 arg_expr(sym, env = arg_env_(quote(sym), environment()))
 
 arg_expr_(sym, env = arg_env_(quote(sym), environment()))
+
+arg_value(
+  sym,
+  env = arg_env_(quote(sym), environment()),
+  ifnotforced = stop("Variable is not forced, so has no value")
+)
+
+arg_value_(
+  sym,
+  env = arg_env_(quote(sym), environment()),
+  ifnotforced = stop("Variable is not forced, so has no value")
+)
 
 dots_envs(...)
 
@@ -67,6 +81,9 @@ evaluates to a name or character.}
 
 \item{env}{The environment to search in.}
 
+\item{ifnotforced}{What to return if calling arg_value on a promise
+that has not been forced.}
+
 \item{...}{Bare variable names (for \verb{is_*}) or expressions (for
 \verb{dots_*}). Not forced.}
 
@@ -81,6 +98,8 @@ missingness.}
 \code{arg_env} returns an environment.
 
 \code{arg_expr} returns the expression bound to a named argument.
+
+\code{arg_value} returns the value bound to a named argument.
 
 \code{is_forced} and other \verb{is_*} return a logical vector with
 optional names.
@@ -125,12 +144,12 @@ FALSE).
 }
 \details{
 Throughout this package, some functions come in two forms, a "bare"
-version which quote their first argument literally, and a
+version which quotes its first argument literally, and a
 normally-evaluating version with a trailing underscore in its
 name. So \code{is_forced(x)} chiecks whether "x" is a missing variable,
-while \code{is_forced_(x, environment())} checks whether "x"
-contains the \emph{name} of another variable which is missing. The
-following are all equivalent:
+while \code{is_forced_(x, environment())} checks whether "x" contains
+the \emph{name} of another variable which is missing. The following are
+all equivalent:
 \itemize{
 \item \code{arg_env(x)}
 \item \code{{y <- quo(x); arg_env_(y)}}

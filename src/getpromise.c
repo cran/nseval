@@ -30,7 +30,7 @@ SEXP _locate(SEXP sym, SEXP env, SEXP function) {
 
   while (env != R_EmptyEnv) {
     assert_type(env, ENVSXP);
-    LOG("looking in env %p for %s", env, CHAR(PRINTNAME(sym)));
+    LOG("looking in env %p for %s", (void *) env, CHAR(PRINTNAME(sym)));
     if (fn) {
       SEXP x = PROTECT(findVarInFrame3(env, sym, TRUE));
       LOG("got a %s", type2char(TYPEOF(x)));
@@ -96,7 +96,7 @@ SEXP x_findVar(SEXP sym, SEXP envir) {
   } else {
     binding = Rf_findVar(sym, envir);
   }
-  if (TYPEOF(binding) == PROMSXP) { 
+  if (TYPEOF(binding) == PROMSXP) { //TODO: unwrap here? (no?) 
     while(TYPEOF(PREXPR(binding)) == PROMSXP) {
       binding = PREXPR(binding);
     }
@@ -124,9 +124,8 @@ int unwrappable(SEXP prom) {
 }
 
 int is_forced_promise(SEXP prom) {
-  return !( PRVALUE(prom) == R_UnboundValue
-            || PRVALUE(prom) == R_MissingArg
-            || PRENV(prom) == NULL);
+  return ( PRVALUE(prom) != R_UnboundValue
+           || TYPEOF(PRENV(prom)) != ENVSXP);
 }
 
 SEXP unwrap_step(SEXP prom) {
@@ -139,10 +138,10 @@ SEXP unwrap_step(SEXP prom) {
   SEXP env = PRENV(prom);
   SEXP binding = x_findVar(name, env);
   /* Rprintf("env(%p) is %p where %s -> %p which is a %s\n", */
-  /*         prom, */
-  /*         env, */
+  /*         (void *) prom, */
+  /*         (void *) env, */
   /*         CHAR(PRINTNAME(name)), */
-  /*         binding, */
+  /*         (void *) binding, */
   /*         type2char(TYPEOF(binding))); */
   if (binding == R_MissingArg) {
     return emptypromise();
@@ -208,7 +207,7 @@ SEXP peek_promise(SEXP prom) {
   
   prom = unwrap_promise(prom, TRUE);
   assert_type(prom, PROMSXP);
-  while(TYPEOF(PREXPR(prom)) == PROMSXP) {
+  while(TYPEOF(PREXPR(prom)) == PROMSXP) { //TODO: unwrap
     prom = PREXPR(prom);
   }
   LOG("unwrapped to a %s", type2char(TYPEOF(prom)));
@@ -221,7 +220,7 @@ SEXP peek_promise(SEXP prom) {
   switch(TYPEOF(name)) {
   case SYMSXP: {
     LOG("it's a %s, `%s`, quoted in environment %p",
-        type2char(TYPEOF(name)), CHAR(PRINTNAME(name)), PRENV(prom));
+        type2char(TYPEOF(name)), CHAR(PRINTNAME(name)), (void *) PRENV(prom));
     SEXP binding;
     binding = x_findVar(name, env);
     // we've already unwrapped so this shouldn't be another promise
@@ -251,6 +250,7 @@ SEXP _unwrap_quotation(SEXP q, SEXP recursive) {
 typedef enum GET_ENUM {
   EXPR,
   ENV,
+  VALUE,
   PROMISE,
   IS_LITERAL, /* not a "test" because it follows logic of inspecting expr/value */
   IS_MISSING
@@ -260,6 +260,7 @@ const char* get_enum_string(GET_ENUM type) {
   switch(type) {
   case EXPR: return "expression";
   case ENV: return "environment";
+  case VALUE: return "value";
   case PROMISE: return "promise";
   case IS_LITERAL: return "is literal";
   case IS_MISSING: return "is missing";
@@ -283,6 +284,57 @@ const char* test_enum_string(TEST_ENUM type) {
 
 SEXP arg_get(SEXP, SEXP, GET_ENUM, int, int);
 
+SEXP arg_get_from_quotation(SEXP quot, GET_ENUM request, int warn, SEXP value) {
+  LOG("unwrapping a quotation\n");
+  switch(request) {
+  default:
+  case EXPR:
+    return _expr_quotation(quot);
+  case ENV:
+    return _env_quotation(quot);
+  case VALUE:
+    if (value != R_UnboundValue) return value;
+    else return _value_quotation(quot);
+  case PROMISE:
+    if (value != R_UnboundValue) {
+      LOG("there is a new value to include\n");
+      if (is_forced_quotation(quot)) {
+        return new_forced_promise(_expr_quotation(quot),
+                                  value);
+      } else {
+        return new_weird_promise(_expr_quotation(quot),
+                                 _env_quotation(quot),
+                                 value);
+      }
+    } else {
+      LOG("quotation to promsxp\n");
+      return _quotation_to_promsxp(quot);
+    }
+  case IS_LITERAL:
+    {
+      SEXP expr = _expr_quotation(quot);
+      switch(TYPEOF(expr)) {
+      case INTSXP:
+      case STRSXP:
+      case REALSXP:
+        if (LENGTH(expr) > 1 || ATTRIB(expr) != R_NilValue) {
+          return ScalarLogical(FALSE);
+        } else {
+          return ScalarLogical(TRUE);
+        }
+      default:
+        return ScalarLogical(FALSE);
+      }
+    }
+  case IS_MISSING:
+    if (_expr_quotation(quot) == R_MissingArg) {
+      return ScalarLogical(TRUE);
+    } else {
+      return ScalarLogical(FALSE);
+    }
+  }
+}
+
 SEXP arg_get_from_unforced_promise(SEXP prom, GET_ENUM request, int warn) {
   SEXP expr = PREXPR(prom);
   switch(request) {
@@ -291,6 +343,8 @@ SEXP arg_get_from_unforced_promise(SEXP prom, GET_ENUM request, int warn) {
     return PREXPR(prom);
   case ENV:
     return PRENV(prom);
+  case VALUE:
+    error("Can't get value from unforced promise");
   case PROMISE:
     return prom;
   case IS_LITERAL:
@@ -320,12 +374,18 @@ SEXP arg_get_from_unforced_promise(SEXP prom, GET_ENUM request, int warn) {
 
 SEXP arg_get_from_forced_promise(SEXP sym, SEXP prom, GET_ENUM request, int warn) {
   SEXP expr = PREXPR(prom);
-
   switch(request){
-  default:
-  case EXPR:
   case ENV:
+    if (TYPEOF(PRENV(prom)) == ENVSXP) {
+      /* weird promise is forced (has a value) but still has an env,
+         and the value also duplicated to EXPR.  this happens in primitive
+         function method dispatch for some reason */
+      return PRENV(prom);
+    }
+  case EXPR:
+  case VALUE:
   case PROMISE:
+  default:
     break;
   case IS_LITERAL:
   case IS_MISSING:
@@ -349,6 +409,8 @@ SEXP arg_get_from_forced_promise(SEXP sym, SEXP prom, GET_ENUM request, int warn
         }
       }
       return R_EmptyEnv;
+    case VALUE:
+      return PRVALUE(prom);
     case PROMISE: 
       return prom;
     case IS_LITERAL: 
@@ -371,6 +433,8 @@ SEXP arg_get_from_forced_promise(SEXP sym, SEXP prom, GET_ENUM request, int warn
       return prom;
     case EXPR: 
       return expr;
+    case VALUE:
+      return PRVALUE(prom);      
     case IS_LITERAL: 
       /* the missing is a kind of literal */
       return ScalarLogical(expr == R_MissingArg);
@@ -396,20 +460,23 @@ SEXP arg_get_from_forced_promise(SEXP sym, SEXP prom, GET_ENUM request, int warn
       return prom;
     case EXPR:
       return expr;
+    case VALUE:
+      return PRVALUE(prom);      
     case IS_LITERAL:
       return ScalarLogical(FALSE);
     case IS_MISSING:
       return ScalarLogical(PRVALUE(prom) == R_MissingArg);
     }
   default:
+    /* the expression is a data object but not a source literal */
     switch(request) {
     default:
     case ENV:
-      if(warn) warning("Argument `%s` already forced, %s found instead of expression?",
-                       CHAR(PRINTNAME(sym)), type2char(TYPEOF(expr)));
       return R_EmptyEnv;
     case EXPR:
       return expr;
+    case VALUE:
+      return PRVALUE(prom);
     case PROMISE:
       return prom;
     case IS_LITERAL:
@@ -437,6 +504,8 @@ SEXP arg_get_from_nonpromise(SEXP sym, SEXP value, GET_ENUM request, int warn) {
                          type2char(TYPEOF(value)));
       }
       return value;
+    case VALUE:
+      return value;
     case ENV: 
       return R_EmptyEnv;
     case PROMISE: 
@@ -455,6 +524,8 @@ SEXP arg_get_from_nonpromise(SEXP sym, SEXP value, GET_ENUM request, int warn) {
       default:
       case EXPR:
         return R_MissingArg;
+      case VALUE:
+        return value;
       case ENV:
         return R_EmptyEnv;
       case PROMISE:
@@ -491,6 +562,8 @@ SEXP arg_get_from_nonpromise(SEXP sym, SEXP value, GET_ENUM request, int warn) {
       prom = new_forced_promise(expr, value);
       UNPROTECT(1);
       return prom;
+    case VALUE:
+      return value;
     case IS_LITERAL:
       return ScalarLogical(FALSE);
     case IS_MISSING:
@@ -529,15 +602,17 @@ SEXP arg_get(SEXP envir, SEXP name, GET_ENUM type, int warn, int recursive) {
   if (name == R_DotsSymbol) {
     error("Unsupported use of ... in arg_* (use `arg_list( (...) )` or get_dots())");    
   }
-  /* Rprintf("Getting %s of binding `%s` in env `%p`\n", */
-  /*         get_enum_string(type), CHAR(PRINTNAME(name)), envir); */
+  LOG("Getting %s of binding `%s` in env `%p`\n",
+      get_enum_string(type), CHAR(PRINTNAME(name)), (void *) envir);
   SEXP binding = PROTECT(x_findVar(name, envir));
   if (TYPEOF(binding) == PROMSXP) {
     if (recursive) binding = unwrap_promise(binding, recursive);
     while (TYPEOF(PREXPR(binding)) == PROMSXP) {
       binding = PREXPR(binding);
     }
-    if (PRVALUE(binding) != R_UnboundValue) {
+    if (is_quotation(PREXPR(binding))) {
+      ans = arg_get_from_quotation(PREXPR(binding), type, warn, PRVALUE(binding));
+    } else if (PRVALUE(binding) != R_UnboundValue) {
       ans = arg_get_from_forced_promise(name, binding, type, warn);
     } else {
       ans = arg_get_from_unforced_promise(binding, type, warn);
@@ -549,6 +624,17 @@ SEXP arg_get(SEXP envir, SEXP name, GET_ENUM type, int warn, int recursive) {
   return ans;
 }
 
+SEXP arg_check_from_quotation(SEXP quot, SEXP value,
+                              TEST_ENUM query, int warn) {
+  switch(query) {
+  default:
+  case IS_PROMISE:
+    return ScalarLogical(TRUE);
+  case IS_FORCED:
+    return ScalarLogical((value != R_UnboundValue) || is_forced_quotation(quot));
+  }
+}
+
 SEXP arg_check(SEXP envir, SEXP name, TEST_ENUM query, int warn) {
   assert_type(envir, ENVSXP);
   assert_type(name, SYMSXP);
@@ -556,10 +642,14 @@ SEXP arg_check(SEXP envir, SEXP name, TEST_ENUM query, int warn) {
   SEXP binding = do_findBinding(name, envir);
   while (TYPEOF(binding) == PROMSXP && TYPEOF(PREXPR(binding)) == PROMSXP) {
     /* Rprintf("Got a wrapped promise\n"); */
+    // TODO: unwrap quotations here
     binding = PREXPR(binding);
   }
   switch(TYPEOF(binding)) {
   case PROMSXP:
+    if (is_quotation(PREXPR(binding))) {
+      return arg_check_from_quotation(PREXPR(binding), PRVALUE(binding), query, warn);
+    }
     switch (query) {
     default:
     case IS_PROMISE: 
@@ -595,6 +685,11 @@ SEXP _arg_env(SEXP envir, SEXP name, SEXP warn) {
 
 SEXP _arg_expr(SEXP envir, SEXP name, SEXP warn) {
   return arg_get(envir, name, EXPR, asLogical(warn), FALSE);
+}
+
+SEXP _arg_value(SEXP envir, SEXP name, SEXP warn, SEXP sigil) {
+  SEXP x = arg_get(envir, name, VALUE, asLogical(warn), FALSE);
+  if (x ==  R_UnboundValue) return(sigil); else return x;
 }
 
 SEXP _arg_dots(SEXP envirs, SEXP syms, SEXP tags, SEXP warn) {
@@ -652,7 +747,7 @@ SEXP _arg_dots(SEXP envirs, SEXP syms, SEXP tags, SEXP warn) {
         APPEND(CAR(j), TAG(j));
       }
     } else {
-      LOG("Getting %s from env %p", CHAR(PRINTNAME(sym)), env);
+      LOG("Getting %s from env %p", CHAR(PRINTNAME(sym)), (void *) env);
       SEXP promise =
         arg_get(env, sym, PROMISE, asLogical(warn), FALSE);
       LOG("got a %s", type2char(TYPEOF(promise)));

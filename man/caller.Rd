@@ -6,7 +6,8 @@
 \usage{
 caller(
   env = caller(environment()),
-  ifnotfound = stop("caller: environment not found on stack")
+  ifnotfound = stop("caller: environment not found on stack"),
+  n = 1
 )
 }
 \arguments{
@@ -16,6 +17,8 @@ value as \code{caller(environment())}.)}
 
 \item{ifnotfound}{What to return in case the caller cannot be
 determined. By default an error is raised.}
+
+\item{n}{How many levels to work up the stack.}
 }
 \value{
 The environment which called \code{env} into being. If that
